@@ -166,22 +166,22 @@
 		}
 
 		// 2. 썸네일 화면 출력을 담당하는 함수 (중복 꼬임 방지: insertAdjacentHTML 사용)
-		function showUploadFile({uuid, fileName, link}){
-			const uploadResult = document.querySelector(".uploadResult");
-			const realFileName = fileName || arguments[0].filename;
+		function showUploadFile({uuid, filename, realFilename, s3Url}){
+    const uploadResult = document.querySelector(".uploadResult");
 
-			const str = `<div class="card col-4">
-					<div class="card-header d-flex justify-content-center">
-						${realFileName}
-						<button class="btn-sm btn-danger ms-2" type="button" onclick="removeFile('${uuid}', '${realFileName}', this)">X</button>
-					</div>
-					<div class="card-body d-flex justify-content-center">
-						 <img src="/view/${link}" data-src="${uuid+"_"+realFileName}" style="width:100px; height:100px; object-fit:cover;">
-					</div>
-				</div><!-- card -->`;
+    const str = `<div class="card col-4">
+            <div class="card-header d-flex justify-content-center">
+                ${filename}
+                <button class="btn-sm btn-danger ms-2" type="button" onclick="removeFile('${uuid}', '${filename}', this)">X</button>
+            </div>
+            <div class="card-body d-flex justify-content-center">
+                 <!-- 미리보기는 실제 S3 URL로, 서버 전송용 data-src는 uuid_filename(clean)으로 -->
+                 <img src="${s3Url}" data-src="${realFilename}" style="width:100px; height:100px; object-fit:cover;">
+            </div>
+        </div><!-- card -->`;
 
-			uploadResult.insertAdjacentHTML("beforeend", str);
-		}
+    uploadResult.insertAdjacentHTML("beforeend", str);
+}
 
 		$(document).ready(function() {
 			// 부트스트랩 모달 객체 생성

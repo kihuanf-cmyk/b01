@@ -27,4 +27,6 @@ public class BoardDTO {
 	private LocalDateTime modDate;
 	
 	private List<String> fileNames;
+	
+	private List<RemoveFileDTO> removeFileList; // modify 화면에서 X버튼으로 지운 첨부파일 목록 (S3 삭제용)
 }

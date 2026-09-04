@@ -96,7 +96,8 @@
 								<!-- Action Buttons -->
 								<div class="my-4">
 									<div class="float-end">
-										<button type="button" class="btn btn-primary addFileBtn">ADD File</button>
+										<button type="button" class="btn btn-primary addFileBtn">ADD
+											File</button>
 										<button type="button" class="btn btn-danger btn-remove">Remove</button>
 										<button type="button" class="btn btn-primary btn-modify">Modify</button>
 										<button type="button" class="btn btn-secondary btn-list">List</button>
@@ -107,7 +108,7 @@
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- 첨부 파일 섬네일을 보여줄 부분 -->
 			<div class="row mt-3">
 				<div class="col ">
@@ -117,10 +118,13 @@
 							<div class="card col-4" th:with="arr = ${fileName.split('_')}">
 								<div class="card-header d-flex justify-content-center">
 									[[${arr[1]}]]
-									<button class="btn-sm btn-danger" data-uuid="[[${arr[0]}]]" data-filename="[[${arr[1]}]]">X</button>
+									<button class="btn-sm btn-danger" data-uuid="[[${arr[0]}]]"
+										data-filename="[[${arr[1]}]]">X</button>
 								</div>
 								<div class="card-body">
-									<img th:src="|/view/s_${fileName}|" th:data-src="${fileName}">
+									<!-- 화면 표시는 S3 URL로, 서버 전송용 data-src는 uuid_filename(clean) 그대로 유지 -->
+									<img th:src="${@s3Uploader.getFileUrl(fileName)}"
+										th:data-src="${fileName}">
 								</div>
 							</div>
 							<!-- card -->
@@ -128,7 +132,7 @@
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- 첨부파일 추가를 위한 모달창 -->
 			<div class="modal uploadModal" tabindex="-1">
 				<div class="modal-dialog">
@@ -312,29 +316,29 @@
 
 			// 서버에서 반환된 파일 정보를 바탕으로 화면에 카드(썸네일)를 동적으로 그려주는 함수
 			function showUploadFile(uploadResultDto) {
-				console.log("업로드 결과 데이터:", uploadResultDto);
+    console.log("업로드 결과 데이터:", uploadResultDto);
 
-				const uuid = uploadResultDto.uuid;
-				const fileName = uploadResultDto.filename; // 서버 응답이 소문자 filename입니다.
-				const realFilename = uploadResultDto.realFilename; // uuid_filename 형태의 전체 이름
+    const uuid = uploadResultDto.uuid;
+    const fileName = uploadResultDto.filename; // 서버 응답이 소문자 filename입니다.
+    const realFilename = uploadResultDto.realFilename; // uuid_filename (서버 전송/삭제용 clean key)
+    const s3Url = uploadResultDto.s3Url; // 화면 미리보기용 실제 S3 URL
 
-				// data-src와 뷰(View) 호출용 경로 설정 (realFilename 활용)
-				const linkStr = realFilename ? realFilename : `${uuid}_${fileName}`;
-				
-				const str = `
-					<div class="card col-4">
-						<div class="card-header d-flex justify-content-center">
-							${fileName}
-							<button class="btn-sm btn-danger" type="button" data-uuid="${uuid}" data-filename="${fileName}">X</button>
-						</div>
-						<div class="card-body">
-							<img src="/view/s_${linkStr}" data-src="${linkStr}">
-						</div>
-					</div>`;
-				
-				$(".uploadResult").append(str);
-			}
-			
+    const linkStr = realFilename ? realFilename : `${uuid}_${fileName}`;
+    
+    const str = `
+        <div class="card col-4">
+            <div class="card-header d-flex justify-content-center">
+                ${fileName}
+                <button class="btn-sm btn-danger" type="button" data-uuid="${uuid}" data-filename="${fileName}">X</button>
+            </div>
+            <div class="card-body">
+                <!-- 미리보기는 S3 URL로, data-src(서버 전송용)는 uuid_filename(clean)으로 -->
+                <img src="${s3Url}" data-src="${linkStr}">
+            </div>
+        </div>`;
+    
+    $(".uploadResult").append(str);
+}		
 			
 			$(".uploadResult").on("click", ".btn-danger", e => {
 				e.preventDefault();

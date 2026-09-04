@@ -17,6 +17,7 @@ import kr.or.oti.b01.dto.BoardListReplyCountDTO;
 import kr.or.oti.b01.dto.PageRequestDTO;
 import kr.or.oti.b01.dto.PageResponseDTO;
 import kr.or.oti.b01.repository.BoardRepository;
+import kr.or.oti.b01.util.S3Uploader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 public class BoardServiceImpl implements BoardService {
 	private final BoardRepository boardRepository;
 	private final ModelMapper mapper;
+	private final S3Uploader s3Uploader;
 	
 	public void register(BoardDTO boardDTO) {
 //		boardRepository.save(mapper.map(boardDTO, Board.class));
@@ -64,7 +66,19 @@ public class BoardServiceImpl implements BoardService {
 	}
 
 	public void remove(long bno) {
-		boardRepository.deleteById(bno);
+	    // DB 삭제 전, 첨부된 이미지들을 먼저 S3에서 삭제
+	    boardRepository.findByIdWithImages(bno).ifPresent(board -> {
+	        board.getImageSet().forEach(image -> {
+	            String fileName = image.getUuid() + "_" + image.getFilename();
+	            try {
+	                s3Uploader.removeS3File(fileName);
+	            } catch (Exception e) {
+	                log.error("S3 파일 삭제 중 예외 발생 (bno={}, file={}): {}", bno, fileName, e.getMessage());
+	            }
+	        });
+	    });
+
+	    boardRepository.deleteById(bno);
 	}
 
 	public void modify(BoardDTO boardDTO) {
@@ -72,6 +86,18 @@ public class BoardServiceImpl implements BoardService {
 	            .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다. bno=" + boardDTO.getBno()));
 	    
 	    board.change(boardDTO.getTitle(), boardDTO.getContent());
+	    
+	    // X버튼으로 삭제 요청된 첨부파일들을 S3에서 삭제
+	    if (boardDTO.getRemoveFileList() != null) {
+	        boardDTO.getRemoveFileList().forEach(removeFile -> {
+	            String fileName = removeFile.getUuid() + "_" + removeFile.getFileName();
+	            try {
+	                s3Uploader.removeS3File(fileName);
+	            } catch (Exception e) {
+	                log.error("S3 파일 삭제 중 예외 발생 (bno={}, file={}): {}", boardDTO.getBno(), fileName, e.getMessage());
+	            }
+	        });
+	    }
 	    
 	    board.clearImages();
 	    
@@ -84,16 +110,30 @@ public class BoardServiceImpl implements BoardService {
 	    
 		boardRepository.save(board);
 	}
+	
 	public void removeBatch(List<Long> bnos) {
-        log.info("removeBatch bnos: {}", bnos);
+	    log.info("removeBatch bnos: {}", bnos);
 
-        if (bnos == null || bnos.isEmpty()) {
-            return;
-        }
+	    if (bnos == null || bnos.isEmpty()) {
+	        return;
+	    }
 
-        boardRepository.deleteAllById(bnos);
-    }
+	    // DB 삭제 전에 각 게시글의 첨부 이미지를 먼저 찾아서 S3에서 삭제
+	    for (Long bno : bnos) {
+	        boardRepository.findByIdWithImages(bno).ifPresent(board -> {
+	            board.getImageSet().forEach(image -> {
+	                String fileName = image.getUuid() + "_" + image.getFilename();
+	                try {
+	                    s3Uploader.removeS3File(fileName);
+	                } catch (Exception e) {
+	                    log.error("S3 파일 삭제 중 예외 발생 (bno={}, file={}): {}", bno, fileName, e.getMessage());
+	                }
+	            });
+	        });
+	    }
 
+	    boardRepository.deleteAllById(bnos);
+	}
 	public PageResponseDTO<BoardListReplyCountDTO> listWithReplyCount(PageRequestDTO pageRequestDTO) {
 		Pageable pageable = PageRequest.of(pageRequestDTO.getPage()-1, pageRequestDTO.getSize(), Sort.by("bno").descending());
 		Page<BoardListReplyCountDTO> page = boardRepository.searchWithReplyCount(pageRequestDTO.getTypes(), pageRequestDTO.getKeyword(), pageable);
