@@ -18,6 +18,6 @@ public class B01Application {
 
 	//로그인 기능 구현함
 	//보드기능 구현함
-	
+	//메일 보드 보내기
 }
 
