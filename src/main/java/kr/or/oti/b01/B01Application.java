@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 public class B01Application {
 
 	//주석을 추가함
+	//다시 머지 해봄
 	//vs 옆에 추가함 머지?
 	//vs코드에서 추가함
 	public static void main(String[] args) {
